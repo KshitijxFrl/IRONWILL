@@ -3,6 +3,8 @@
 
 
 #include <cmath>
+#include <fstream>
+#include <iostream>
 #include <stdexcept>
 
 
@@ -75,6 +77,75 @@ void Optimizer::adamW(){
     for(int i = 0; i < this->params.size(); i++){
         adamWUpdate(this->params[i]->data,this->params[i]->gradient,*this->m[i],*this->v[i],this->learningRate,this->beta1,this->beta2,this->epsilon,this->weightDecay,this->stepCount);
     }
+}
+
+void Optimizer::saveState(std::string fileName){
+    std::ofstream out(fileName, std::ios::binary);
+
+    if(!out.is_open()){
+        std::cerr << "Failed to open optimizer state file: " << fileName << std::endl;
+        return;
+    }
+
+    out.write(reinterpret_cast<char*>(&this->stepCount), sizeof(int));
+
+    for(int i = 0; i < this->m.size(); i++){
+        std::vector<float> temp = this->m[i]->downloadata();
+        out.write(reinterpret_cast<char*>(temp.data()), temp.size() * sizeof(float));
+    }
+
+    for(int i = 0; i < this->v.size(); i++){
+        std::vector<float> temp = this->v[i]->downloadata();
+        out.write(reinterpret_cast<char*>(temp.data()), temp.size() * sizeof(float));
+    }
+
+    out.close();
+}
+
+bool Optimizer::loadState(std::string fileName){
+    std::ifstream in(fileName, std::ios::binary);
+
+    if(!in.is_open()){
+        std::cerr << "Failed to open optimizer state file: " << fileName << std::endl;
+        return false;
+    }
+
+    in.read(reinterpret_cast<char*>(&this->stepCount), sizeof(int));
+
+    if(!in.good()){
+        std::cerr << "Failed to read optimizer step count: " << fileName << std::endl;
+        in.close();
+        return false;
+    }
+
+    for(int i = 0; i < this->m.size(); i++){
+        std::vector<float> temp(this->m[i]->getTensorSize());
+        in.read(reinterpret_cast<char*>(temp.data()), temp.size() * sizeof(float));
+
+        if(!in.good()){
+            std::cerr << "Failed to read optimizer m state: " << fileName << std::endl;
+            in.close();
+            return false;
+        }
+
+        this->m[i]->uploadData(temp);
+    }
+
+    for(int i = 0; i < this->v.size(); i++){
+        std::vector<float> temp(this->v[i]->getTensorSize());
+        in.read(reinterpret_cast<char*>(temp.data()), temp.size() * sizeof(float));
+
+        if(!in.good()){
+            std::cerr << "Failed to read optimizer v state: " << fileName << std::endl;
+            in.close();
+            return false;
+        }
+
+        this->v[i]->uploadData(temp);
+    }
+
+    in.close();
+    return true;
 }
 
 

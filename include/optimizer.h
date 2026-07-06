@@ -1,6 +1,7 @@
 #ifndef OPTIMIZER_H
 #define OPTIMIZER_H
 
+#include <string>
 #include <vector>
 
 #include "tensor.h"
@@ -29,6 +30,10 @@ public:
     void zeroGrad();
 
     void adamW();
+
+    void saveState(std::string fileName);
+
+    bool loadState(std::string fileName);
 
     void setLearningRate(float lr);
 

@@ -235,6 +235,20 @@ std::pair<int,std::string> findLatestNumberedCheckpoint(std::string checkpointDi
     return {latestStep, latestPath};
 }
 
+std::string optimizerCheckpointPath(std::string modelCheckpointPath){
+    std::string suffix = ".bin";
+
+    if(modelCheckpointPath.size() >= suffix.size()){
+        std::string ending = modelCheckpointPath.substr(modelCheckpointPath.size() - suffix.size());
+
+        if(ending == suffix){
+            return modelCheckpointPath.substr(0, modelCheckpointPath.size() - suffix.size()) + ".optim";
+        }
+    }
+
+    return modelCheckpointPath + ".optim";
+}
+
 void appendProgress(std::string progressFile,int step,float trainLoss,float valLoss){
     bool needsHeader = true;
 
@@ -418,17 +432,20 @@ void trainLoop(
 
     FileHandler fileHandler;
     int startStep = 0;
+    std::string optimizerStateToLoad = "";
 
     std::pair<int,std::string> latestNumbered = findLatestNumberedCheckpoint(checkpointDir);
 
     if(latestNumbered.first >= 0){
         std::cout << "Loading checkpoint: " << latestNumbered.second << std::endl;
         fileHandler.fetchParameter(fullModel, latestNumbered.second);
+        optimizerStateToLoad = optimizerCheckpointPath(latestNumbered.second);
         startStep = latestNumbered.first + 1;
         std::cout << "Resuming from step: " << startStep << std::endl;
     }else if(pathExists(latestCheckpointFile)){
         std::cout << "Loading checkpoint: " << latestCheckpointFile << std::endl;
         fileHandler.fetchParameter(fullModel, latestCheckpointFile);
+        optimizerStateToLoad = optimizerCheckpointPath(latestCheckpointFile);
         startStep = 0;
         std::cout << "Loaded latest checkpoint without numbered step. Starting from step 0." << std::endl;
     }else{
@@ -442,6 +459,15 @@ void trainLoop(
     );
 
     Optimizer optimizer(params, learningRate);
+
+    if(optimizerStateToLoad != ""){
+        if(pathExists(optimizerStateToLoad)){
+            std::cout << "Loading optimizer state: " << optimizerStateToLoad << std::endl;
+            optimizer.loadState(optimizerStateToLoad);
+        }else{
+            std::cerr << "Warning: optimizer state missing: " << optimizerStateToLoad << std::endl;
+        }
+    }
 
     Tensor xInput({batchLen, seqLen});
     Tensor xTarget({batchLen, seqLen});
@@ -531,6 +557,7 @@ void trainLoop(
                           << std::endl;
 
                 fileHandler.setParameter(fullModel, bestCheckpointFile);
+                optimizer.saveState(optimizerCheckpointPath(bestCheckpointFile));
 
                 std::ofstream bestFile(bestMetricFile);
 
@@ -553,6 +580,7 @@ void trainLoop(
             std::cout << "Saving checkpoint: " << saveName << std::endl;
 
             fileHandler.setParameter(fullModel, saveName);
+            optimizer.saveState(optimizerCheckpointPath(saveName));
         }
     }
 
@@ -588,6 +616,7 @@ void trainLoop(
                       << std::endl;
 
             fileHandler.setParameter(fullModel, bestCheckpointFile);
+            optimizer.saveState(optimizerCheckpointPath(bestCheckpointFile));
 
             std::ofstream bestFile(bestMetricFile);
 
@@ -600,6 +629,7 @@ void trainLoop(
 
     std::cout << "Saving final checkpoint: " << latestCheckpointFile << std::endl;
     fileHandler.setParameter(fullModel, latestCheckpointFile);
+    optimizer.saveState(optimizerCheckpointPath(latestCheckpointFile));
 
     xInput.clear();
     xTarget.clear();
