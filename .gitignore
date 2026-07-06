@@ -1,7 +1,4 @@
 ironwill*
-binFiles/
-vocab/
-model_checkpoints/
 progress/
 *.o
 *.out
