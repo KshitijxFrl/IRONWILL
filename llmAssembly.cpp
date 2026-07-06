@@ -355,6 +355,8 @@ void trainLoop(
     createDirectory(progressDir);
 
     std::string latestCheckpointFile = checkpointDir + "/checkpoint_latest.bin";
+    std::string bestCheckpointFile = checkpointDir + "/checkpoint_best.bin";
+    std::string bestMetricFile = checkpointDir + "/checkpoint_best_metric.txt";
     std::string progressFile = progressDir + "/training_progress.csv";
 
     createProgressFile(progressFile);
@@ -446,6 +448,17 @@ void trainLoop(
     Tensor gradLogits({batchLen, seqLen, vocabSize});
     float lastLoss = -1.0f;
     int lastStep = startStep - 1;
+    float bestLoss = -1.0f;
+
+    if(pathExists(bestMetricFile)){
+        std::ifstream bestFile(bestMetricFile);
+
+        if(bestFile.is_open()){
+            bestFile >> bestLoss;
+            bestFile.close();
+            std::cout << "Loaded best checkpoint metric: " << bestLoss << std::endl;
+        }
+    }
 
     int maxTrainSteps = totalSteps;
 
@@ -504,6 +517,29 @@ void trainLoop(
 
             appendProgress(progressFile,step,loss,valLoss);
 
+            float compareLoss = loss;
+
+            if(valLoss >= 0.0f){
+                compareLoss = valLoss;
+            }
+
+            if(bestLoss < 0.0f || compareLoss < bestLoss){
+                bestLoss = compareLoss;
+
+                std::cout << "Saving best checkpoint: " << bestCheckpointFile
+                          << " Best Loss: " << bestLoss
+                          << std::endl;
+
+                fileHandler.setParameter(fullModel, bestCheckpointFile);
+
+                std::ofstream bestFile(bestMetricFile);
+
+                if(bestFile.is_open()){
+                    bestFile << bestLoss << std::endl;
+                    bestFile.close();
+                }
+            }
+
             std::cout << "Step: " << step
                       << " Train Loss: " << loss
                       << " Val Loss: " << valLoss
@@ -537,6 +573,29 @@ void trainLoop(
         }
 
         appendProgress(progressFile,lastStep,lastLoss,finalValLoss);
+
+        float compareLoss = lastLoss;
+
+        if(finalValLoss >= 0.0f){
+            compareLoss = finalValLoss;
+        }
+
+        if(bestLoss < 0.0f || compareLoss < bestLoss){
+            bestLoss = compareLoss;
+
+            std::cout << "Saving best checkpoint: " << bestCheckpointFile
+                      << " Best Loss: " << bestLoss
+                      << std::endl;
+
+            fileHandler.setParameter(fullModel, bestCheckpointFile);
+
+            std::ofstream bestFile(bestMetricFile);
+
+            if(bestFile.is_open()){
+                bestFile << bestLoss << std::endl;
+                bestFile.close();
+            }
+        }
     }
 
     std::cout << "Saving final checkpoint: " << latestCheckpointFile << std::endl;
