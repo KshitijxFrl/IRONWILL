@@ -123,35 +123,55 @@ int main(int argc, char** argv){
 
         tokenizer.loadVocab(vocabFile);
     }else{
-        tokenizer.createVocabFromJsonl(
-            rawTrainFile,
-            vocabFile
-        );
+        if(localFileExists(vocabFile)){
+            std::cout << "Using existing vocab file: " << vocabFile << std::endl;
+        }else{
+            std::cout << "Creating vocab file: " << vocabFile << std::endl;
+            tokenizer.createVocabFromJsonl(
+                rawTrainFile,
+                vocabFile
+            );
+        }
 
         tokenizer.loadVocab(vocabFile);
 
-        tokenizer.encodeJsonlToPaddedBin(
-            rawTrainFile,
-            trainBinFile,
-            seqLen
-        );
-
-        if(rawValFile != "" && localFileExists(rawValFile)){
+        if(localFileExists(trainBinFile)){
+            std::cout << "Using existing train token bin: " << trainBinFile << std::endl;
+        }else{
+            std::cout << "Creating train token bin: " << trainBinFile << std::endl;
             tokenizer.encodeJsonlToPaddedBin(
-                rawValFile,
-                valBinFile,
+                rawTrainFile,
+                trainBinFile,
                 seqLen
             );
+        }
+
+        if(rawValFile != "" && localFileExists(rawValFile)){
+            if(localFileExists(valBinFile)){
+                std::cout << "Using existing validation token bin: " << valBinFile << std::endl;
+            }else{
+                std::cout << "Creating validation token bin: " << valBinFile << std::endl;
+                tokenizer.encodeJsonlToPaddedBin(
+                    rawValFile,
+                    valBinFile,
+                    seqLen
+                );
+            }
         }else{
             valBinFile = "";
         }
 
         if(rawTestFile != "" && localFileExists(rawTestFile)){
-            tokenizer.encodeJsonlToPaddedBin(
-                rawTestFile,
-                testBinFile,
-                seqLen
-            );
+            if(localFileExists(testBinFile)){
+                std::cout << "Using existing test token bin: " << testBinFile << std::endl;
+            }else{
+                std::cout << "Creating test token bin: " << testBinFile << std::endl;
+                tokenizer.encodeJsonlToPaddedBin(
+                    rawTestFile,
+                    testBinFile,
+                    seqLen
+                );
+            }
         }else{
             testBinFile = "";
         }
