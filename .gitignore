@@ -1,0 +1,8 @@
+ironwill*
+binFiles/
+vocab/
+model_checkpoints/
+progress/
+*.o
+*.out
+dataset/train.jsonl
