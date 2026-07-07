@@ -65,12 +65,12 @@ bool FileHandler::setParameter(const std::vector<Module*>& model, std::string FI
     return true;
 }
 
-void FileHandler::fetchParameter(const std::vector<Module*>& model, std::string FILENAME){
+bool FileHandler::fetchParameter(const std::vector<Module*>& model, std::string FILENAME){
     std::ifstream infile(FILENAME, std::ios::binary);
 
     if(!infile.is_open()){
         std::cerr << "Failed to open " << FILENAME << std::endl;
-        return;
+        return false;
     }
 
     std::vector<float> temp;
@@ -80,9 +80,17 @@ void FileHandler::fetchParameter(const std::vector<Module*>& model, std::string 
         for(auto i : parameter){
             temp.resize(i->data.getTensorSize());
             infile.read(reinterpret_cast<char*>(temp.data()), i->data.getTensorSize() * sizeof(float));
+
+            if(!infile.good()){
+                std::cerr << "Failed to read checkpoint tensor from: " << FILENAME << std::endl;
+                infile.close();
+                return false;
+            }
+
             i->data.uploadData(temp);
         }
     }    
     
     infile.close();
+    return true;
 }

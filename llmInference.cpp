@@ -77,7 +77,10 @@ std::string runPromptInference(
     }
 
     FileHandler fileHandler;
-    fileHandler.fetchParameter(fullModel, checkpointFile);
+    if(!fileHandler.fetchParameter(fullModel, checkpointFile)){
+        std::cerr << "Failed to load inference checkpoint: " << checkpointFile << std::endl;
+        return "";
+    }
 
     std::vector<int> generated = tokenizer.encode(prompt);
 

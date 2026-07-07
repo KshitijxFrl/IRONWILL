@@ -556,13 +556,19 @@ void trainLoop(
 
     if(latestNumbered.first >= 0){
         std::cout << "Loading checkpoint: " << latestNumbered.second << std::endl;
-        fileHandler.fetchParameter(fullModel, latestNumbered.second);
+        if(!fileHandler.fetchParameter(fullModel, latestNumbered.second)){
+            std::cerr << "Failed to load numbered checkpoint. Aborting training to protect state." << std::endl;
+            return;
+        }
         optimizerStateToLoad = optimizerCheckpointPath(latestNumbered.second);
         startStep = latestNumbered.first + 1;
         std::cout << "Resuming from step: " << startStep << std::endl;
     }else if(pathExists(latestCheckpointFile)){
         std::cout << "Loading checkpoint: " << latestCheckpointFile << std::endl;
-        fileHandler.fetchParameter(fullModel, latestCheckpointFile);
+        if(!fileHandler.fetchParameter(fullModel, latestCheckpointFile)){
+            std::cerr << "Failed to load latest checkpoint. Aborting training to protect state." << std::endl;
+            return;
+        }
         optimizerStateToLoad = optimizerCheckpointPath(latestCheckpointFile);
         startStep = 0;
         std::cout << "Loaded latest checkpoint without numbered step. Starting from step 0." << std::endl;
@@ -581,7 +587,10 @@ void trainLoop(
     if(optimizerStateToLoad != ""){
         if(pathExists(optimizerStateToLoad)){
             std::cout << "Loading optimizer state: " << optimizerStateToLoad << std::endl;
-            optimizer.loadState(optimizerStateToLoad);
+            if(!optimizer.loadState(optimizerStateToLoad)){
+                std::cerr << "Failed to load optimizer state. Aborting training to protect state." << std::endl;
+                return;
+            }
         }else{
             std::cerr << "Warning: optimizer state missing: " << optimizerStateToLoad << std::endl;
         }
@@ -668,13 +677,12 @@ void trainLoop(
             }
 
             if(bestLoss < 0.0f || compareLoss < bestLoss){
-                bestLoss = compareLoss;
-
                 std::cout << "Saving best checkpoint: " << bestCheckpointFile
-                          << " Best Loss: " << bestLoss
+                          << " Best Loss: " << compareLoss
                           << std::endl;
 
                 if(saveCheckpointWithOptimizer(fileHandler,optimizer,fullModel,bestCheckpointFile)){
+                    bestLoss = compareLoss;
                     saveBestMetric(bestMetricFile,bestLoss);
                 }else{
                     std::cerr << "Best checkpoint save failed. Best metric was not updated." << std::endl;
@@ -726,13 +734,12 @@ void trainLoop(
         }
 
         if(bestLoss < 0.0f || compareLoss < bestLoss){
-            bestLoss = compareLoss;
-
             std::cout << "Saving best checkpoint: " << bestCheckpointFile
-                      << " Best Loss: " << bestLoss
+                      << " Best Loss: " << compareLoss
                       << std::endl;
 
             if(saveCheckpointWithOptimizer(fileHandler,optimizer,fullModel,bestCheckpointFile)){
+                bestLoss = compareLoss;
                 saveBestMetric(bestMetricFile,bestLoss);
             }else{
                 std::cerr << "Best checkpoint save failed. Best metric was not updated." << std::endl;
