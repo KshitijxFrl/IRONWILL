@@ -1,13 +1,15 @@
 #include"include/filehandler.h"
 #include<iostream>
 #include<fstream>
+#include<cstdio>
 
 
 void FileHandler::setParameter(const std::vector<Module*>& model, std::string FILENAME){
-    std::ofstream outfile(FILENAME, std::ios::binary);
+    std::string tempFileName = FILENAME + ".tmp";
+    std::ofstream outfile(tempFileName, std::ios::binary);
 
     if(!outfile.is_open()){
-        std::cerr<<"Failed to open "<<FILENAME<<std::endl;
+        std::cerr<<"Failed to open "<<tempFileName<<std::endl;
         return;
     } 
     
@@ -18,9 +20,28 @@ void FileHandler::setParameter(const std::vector<Module*>& model, std::string FI
             auto temp = i->data.downloadata();
             //i->data.getMatData().data() function returns a direct memory address (a pointer) to the first element inside the vector.
             outfile.write(reinterpret_cast<const char*>(temp.data()), i->data.getTensorSize() * sizeof(float));
+
+            if(!outfile.good()){
+                std::cerr << "Failed while writing checkpoint temp file: " << tempFileName << std::endl;
+                outfile.close();
+                std::remove(tempFileName.c_str());
+                return;
+            }
         }
     }
+
     outfile.close();
+
+    if(!outfile.good()){
+        std::cerr << "Failed to finish checkpoint temp file: " << tempFileName << std::endl;
+        std::remove(tempFileName.c_str());
+        return;
+    }
+
+    if(std::rename(tempFileName.c_str(), FILENAME.c_str()) != 0){
+        std::cerr << "Failed to replace checkpoint file: " << FILENAME << std::endl;
+        std::remove(tempFileName.c_str());
+    }
 }
 
 void FileHandler::fetchParameter(const std::vector<Module*>& model, std::string FILENAME){

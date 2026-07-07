@@ -3,6 +3,7 @@
 
 
 #include <cmath>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -80,26 +81,59 @@ void Optimizer::adamW(){
 }
 
 void Optimizer::saveState(std::string fileName){
-    std::ofstream out(fileName, std::ios::binary);
+    std::string tempFileName = fileName + ".tmp";
+    std::ofstream out(tempFileName, std::ios::binary);
 
     if(!out.is_open()){
-        std::cerr << "Failed to open optimizer state file: " << fileName << std::endl;
+        std::cerr << "Failed to open optimizer state file: " << tempFileName << std::endl;
         return;
     }
 
     out.write(reinterpret_cast<char*>(&this->stepCount), sizeof(int));
 
+    if(!out.good()){
+        std::cerr << "Failed to write optimizer step count: " << tempFileName << std::endl;
+        out.close();
+        std::remove(tempFileName.c_str());
+        return;
+    }
+
     for(int i = 0; i < this->m.size(); i++){
         std::vector<float> temp = this->m[i]->downloadata();
         out.write(reinterpret_cast<char*>(temp.data()), temp.size() * sizeof(float));
+
+        if(!out.good()){
+            std::cerr << "Failed to write optimizer m state: " << tempFileName << std::endl;
+            out.close();
+            std::remove(tempFileName.c_str());
+            return;
+        }
     }
 
     for(int i = 0; i < this->v.size(); i++){
         std::vector<float> temp = this->v[i]->downloadata();
         out.write(reinterpret_cast<char*>(temp.data()), temp.size() * sizeof(float));
+
+        if(!out.good()){
+            std::cerr << "Failed to write optimizer v state: " << tempFileName << std::endl;
+            out.close();
+            std::remove(tempFileName.c_str());
+            return;
+        }
     }
 
     out.close();
+
+    if(!out.good()){
+        std::cerr << "Failed to finish optimizer state file: " << tempFileName << std::endl;
+        std::remove(tempFileName.c_str());
+        return;
+    }
+
+    if(std::rename(tempFileName.c_str(), fileName.c_str()) != 0){
+        std::cerr << "Failed to replace optimizer state file: " << fileName << std::endl;
+        std::remove(tempFileName.c_str());
+    }
 }
 
 bool Optimizer::loadState(std::string fileName){

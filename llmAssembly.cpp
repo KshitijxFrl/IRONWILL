@@ -5,8 +5,10 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
+#include <cstdio>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <vector>
 
 // xInput  = input going inside the model
 // xTarget = values which we need to compare with the model output to compute loss 
@@ -247,6 +249,98 @@ std::string optimizerCheckpointPath(std::string modelCheckpointPath){
     }
 
     return modelCheckpointPath + ".optim";
+}
+
+void cleanupOldNumberedCheckpoints(std::string checkpointDir,int keepCount){
+    if(keepCount <= 0) return;
+    if(!pathExists(checkpointDir)) return;
+
+    DIR* dir = opendir(checkpointDir.c_str());
+
+    if(dir == nullptr){
+        return;
+    }
+
+    std::vector<std::pair<int,std::string>> checkpoints;
+    dirent* entry;
+
+    while((entry = readdir(dir)) != nullptr){
+        std::string fileName = entry->d_name;
+        std::string fullPath = checkpointDir + "/" + fileName;
+
+        struct stat info;
+
+        if(stat(fullPath.c_str(), &info) != 0) continue;
+        if(!S_ISREG(info.st_mode)) continue;
+
+        std::string prefix = "checkpoint_step_";
+        std::string suffix = ".bin";
+
+        if(fileName.size() <= prefix.size() + suffix.size()) continue;
+        if(fileName.substr(0, prefix.size()) != prefix) continue;
+        if(fileName.substr(fileName.size() - suffix.size()) != suffix) continue;
+
+        std::string stepText = fileName.substr(
+            prefix.size(),
+            fileName.size() - prefix.size() - suffix.size()
+        );
+
+        int step = -1;
+
+        try{
+            step = std::stoi(stepText);
+        }
+        catch(...){
+            continue;
+        }
+
+        checkpoints.push_back({step,fullPath});
+    }
+
+    closedir(dir);
+
+    while((int)checkpoints.size() > keepCount){
+        int oldestIndex = 0;
+
+        for(int i = 1; i < checkpoints.size(); i++){
+            if(checkpoints[i].first < checkpoints[oldestIndex].first){
+                oldestIndex = i;
+            }
+        }
+
+        std::string modelFile = checkpoints[oldestIndex].second;
+        std::string optimFile = optimizerCheckpointPath(modelFile);
+
+        std::cout << "Deleting old checkpoint: " << modelFile << std::endl;
+        std::remove(modelFile.c_str());
+        std::remove(optimFile.c_str());
+
+        checkpoints.erase(checkpoints.begin() + oldestIndex);
+    }
+}
+
+void saveBestMetric(std::string bestMetricFile,float bestLoss){
+    std::string tempFileName = bestMetricFile + ".tmp";
+    std::ofstream bestFile(tempFileName);
+
+    if(!bestFile.is_open()){
+        std::cerr << "Failed to open best metric temp file: " << tempFileName << std::endl;
+        return;
+    }
+
+    bestFile << bestLoss << std::endl;
+    bestFile.close();
+
+    if(!bestFile.good()){
+        std::cerr << "Failed to write best metric temp file: " << tempFileName << std::endl;
+        std::remove(tempFileName.c_str());
+        return;
+    }
+
+    if(std::rename(tempFileName.c_str(), bestMetricFile.c_str()) != 0){
+        std::cerr << "Failed to replace best metric file: " << bestMetricFile << std::endl;
+        std::remove(tempFileName.c_str());
+    }
 }
 
 void appendProgress(std::string progressFile,int step,float trainLoss,float valLoss){
@@ -558,13 +652,7 @@ void trainLoop(
 
                 fileHandler.setParameter(fullModel, bestCheckpointFile);
                 optimizer.saveState(optimizerCheckpointPath(bestCheckpointFile));
-
-                std::ofstream bestFile(bestMetricFile);
-
-                if(bestFile.is_open()){
-                    bestFile << bestLoss << std::endl;
-                    bestFile.close();
-                }
+                saveBestMetric(bestMetricFile,bestLoss);
             }
 
             std::cout << "Step: " << step
@@ -581,6 +669,7 @@ void trainLoop(
 
             fileHandler.setParameter(fullModel, saveName);
             optimizer.saveState(optimizerCheckpointPath(saveName));
+            cleanupOldNumberedCheckpoints(checkpointDir,2);
         }
     }
 
@@ -617,13 +706,7 @@ void trainLoop(
 
             fileHandler.setParameter(fullModel, bestCheckpointFile);
             optimizer.saveState(optimizerCheckpointPath(bestCheckpointFile));
-
-            std::ofstream bestFile(bestMetricFile);
-
-            if(bestFile.is_open()){
-                bestFile << bestLoss << std::endl;
-                bestFile.close();
-            }
+            saveBestMetric(bestMetricFile,bestLoss);
         }
     }
 
