@@ -107,7 +107,7 @@ int main(int argc, char** argv){
     int expertCount = 4;
 
     int totalSteps = 10000;//10000
-    float learningRate = 0.001f;
+    float learningRate = 0.0003f;
 
     // -------------------------
     // Tokenizer preparation
@@ -292,7 +292,7 @@ int main(int argc, char** argv){
     }else{
         std::cout << "Starting training..." << std::endl;
 
-        trainLoop(trainBinFile,valBinFile,testBinFile,embedding,layers,outputHead,batchLen,seqLen,vocabSize,totalSteps,learningRate,100,10,100,1);
+        trainLoop(trainBinFile,valBinFile,testBinFile,embedding,layers,outputHead,batchLen,seqLen,vocabSize,totalSteps,learningRate,500,10,100,1);
 
         std::cout << "Training finished." << std::endl;
     }
