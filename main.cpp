@@ -73,17 +73,18 @@ int main(int argc, char** argv){
 
     // Edit these folders when moving datasets, generated token bins, or vocab files.
     std::string datasetLocation = "dataset";
-    std::string binLocation = "binFiles";
-    std::string vocabLocation = "vocab";
+    std::string binLocation     = "binFiles";
+    std::string vocabLocation   = "vocab";
 
-    std::string mergeFile = joinPath(datasetLocation, "manual_merges.txt");
+    std::string mergeFile    = joinPath(datasetLocation, "manual_merges.txt");
     std::string rawTrainFile = joinPath(datasetLocation, "train.jsonl");
-    std::string rawValFile = joinPath(datasetLocation, "validation.jsonl");
-    std::string rawTestFile = joinPath(datasetLocation, "test.jsonl");
-    std::string vocabFile = joinPath(vocabLocation, "vocab.json");
+    std::string rawValFile   = joinPath(datasetLocation, "validation.jsonl");
+    std::string rawTestFile  = joinPath(datasetLocation, "test.jsonl");
+    std::string vocabFile    = joinPath(vocabLocation, "vocab.json");
     std::string trainBinFile = joinPath(binLocation, "train_tokens.bin");
-    std::string valBinFile = joinPath(binLocation, "val_tokens.bin");
-    std::string testBinFile = joinPath(binLocation, "test_tokens.bin");
+    std::string valBinFile   = joinPath(binLocation, "val_tokens.bin");
+    std::string testBinFile  = joinPath(binLocation, "test_tokens.bin");
+    
     bool promptMode = (argc > 1 && std::string(argv[1]) == "prompt");
 
     createLocalDirectory(binLocation);
@@ -105,7 +106,7 @@ int main(int argc, char** argv){
     int blockCount = 4;
     int expertCount = 4;
 
-    int totalSteps = 500;//10000
+    int totalSteps = 10000;//10000
     float learningRate = 0.001f;
 
     // -------------------------
@@ -203,34 +204,24 @@ int main(int argc, char** argv){
     std::vector<Module*> layers;
     std::vector<Module*> ownedActionLayers;
 
+
+
     // -------------------------
     // IRONWILL_V1 blocks:
     // RMSNorm -> Residual Attention -> RMSNorm -> Residual MoE
     // -------------------------
     for(int block = 0; block < blockCount; block++){
-        RMSNormal* normAttn = new RMSNormal(dModel);
+        RMSNormal* normAttn   = new RMSNormal(dModel);
 
-        AttentionGQA* attn = new AttentionGQA(
-            batchLen,
-            seqLen,
-            kvHead,
-            head,
-            headDim
-        );
+        AttentionGQA* attn    = new AttentionGQA(batchLen,seqLen,kvHead,head,headDim);
 
-        ResidualAdd* resAttn = new ResidualAdd(*attn);
+        ResidualAdd* resAttn  = new ResidualAdd(*attn);
 
-        RMSNormal* normMoe = new RMSNormal(dModel);
+        RMSNormal* normMoe    = new RMSNormal(dModel);
 
-        MoE* moe = new MoE(
-            batchLen,
-            seqLen,
-            dModel,
-            hiddenDim,
-            expertCount
-        );
+        MoE* moe              = new MoE(batchLen,seqLen,dModel,hiddenDim,expertCount);
 
-        ResidualAdd* resMoe = new ResidualAdd(*moe);
+        ResidualAdd* resMoe   = new ResidualAdd(*moe);
 
         layers.push_back(normAttn);
         layers.push_back(resAttn);
@@ -294,39 +285,14 @@ int main(int argc, char** argv){
         if(prompt == ""){
             std::cerr << "Prompt mode needs text after: prompt" << std::endl;
         }else{
-            std::string output = runPromptInference(
-                prompt,
-                tokenizer,
-                embedding,
-                layers,
-                outputHead,
-                seqLen,
-                vocabSize,
-                32
-            );
+            std::string output = runPromptInference(prompt,tokenizer,embedding,layers,outputHead,seqLen,vocabSize,32);
 
             std::cout << output << std::endl;
         }
     }else{
         std::cout << "Starting training..." << std::endl;
 
-        trainLoop(
-            trainBinFile,
-            valBinFile,
-            testBinFile,
-            embedding,
-            layers,
-            outputHead,
-            batchLen,
-            seqLen,
-            vocabSize,
-            totalSteps,
-            learningRate,
-            100,
-            10,
-            100,
-            1
-        );
+        trainLoop(trainBinFile,valBinFile,testBinFile,embedding,layers,outputHead,batchLen,seqLen,vocabSize,totalSteps,learningRate,100,10,100,1);
 
         std::cout << "Training finished." << std::endl;
     }
