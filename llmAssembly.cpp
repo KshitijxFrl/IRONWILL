@@ -343,6 +343,30 @@ void saveBestMetric(std::string bestMetricFile,float bestLoss){
     }
 }
 
+bool saveCheckpointWithOptimizer(
+    FileHandler& fileHandler,
+    Optimizer& optimizer,
+    std::vector<Module*>& fullModel,
+    std::string checkpointFile
+){
+    bool modelSaved = fileHandler.setParameter(fullModel, checkpointFile);
+
+    if(!modelSaved){
+        std::cerr << "Checkpoint model save failed: " << checkpointFile << std::endl;
+        return false;
+    }
+
+    bool optimizerSaved = optimizer.saveState(optimizerCheckpointPath(checkpointFile));
+
+    if(!optimizerSaved){
+        std::cerr << "Checkpoint optimizer save failed: "
+                  << optimizerCheckpointPath(checkpointFile) << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 void appendProgress(std::string progressFile,int step,float trainLoss,float valLoss){
     bool needsHeader = true;
 
@@ -650,9 +674,11 @@ void trainLoop(
                           << " Best Loss: " << bestLoss
                           << std::endl;
 
-                fileHandler.setParameter(fullModel, bestCheckpointFile);
-                optimizer.saveState(optimizerCheckpointPath(bestCheckpointFile));
-                saveBestMetric(bestMetricFile,bestLoss);
+                if(saveCheckpointWithOptimizer(fileHandler,optimizer,fullModel,bestCheckpointFile)){
+                    saveBestMetric(bestMetricFile,bestLoss);
+                }else{
+                    std::cerr << "Best checkpoint save failed. Best metric was not updated." << std::endl;
+                }
             }
 
             std::cout << "Step: " << step
@@ -667,9 +693,11 @@ void trainLoop(
 
             std::cout << "Saving checkpoint: " << saveName << std::endl;
 
-            fileHandler.setParameter(fullModel, saveName);
-            optimizer.saveState(optimizerCheckpointPath(saveName));
-            cleanupOldNumberedCheckpoints(checkpointDir,2);
+            if(saveCheckpointWithOptimizer(fileHandler,optimizer,fullModel,saveName)){
+                cleanupOldNumberedCheckpoints(checkpointDir,2);
+            }else{
+                std::cerr << "Numbered checkpoint save failed. Old checkpoints were kept." << std::endl;
+            }
         }
     }
 
@@ -704,15 +732,16 @@ void trainLoop(
                       << " Best Loss: " << bestLoss
                       << std::endl;
 
-            fileHandler.setParameter(fullModel, bestCheckpointFile);
-            optimizer.saveState(optimizerCheckpointPath(bestCheckpointFile));
-            saveBestMetric(bestMetricFile,bestLoss);
+            if(saveCheckpointWithOptimizer(fileHandler,optimizer,fullModel,bestCheckpointFile)){
+                saveBestMetric(bestMetricFile,bestLoss);
+            }else{
+                std::cerr << "Best checkpoint save failed. Best metric was not updated." << std::endl;
+            }
         }
     }
 
     std::cout << "Saving final checkpoint: " << latestCheckpointFile << std::endl;
-    fileHandler.setParameter(fullModel, latestCheckpointFile);
-    optimizer.saveState(optimizerCheckpointPath(latestCheckpointFile));
+    saveCheckpointWithOptimizer(fileHandler,optimizer,fullModel,latestCheckpointFile);
 
     xInput.clear();
     xTarget.clear();

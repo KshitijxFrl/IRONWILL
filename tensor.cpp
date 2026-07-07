@@ -78,6 +78,20 @@ std::vector<float> Tensor::downloadata(){
     return temp;
 }
 
+bool Tensor::downloadDataChecked(std::vector<float>& out){
+    out.resize(this->size);
+
+    cudaError_t err = cudaMemcpy(out.data(), this->gpu_data, this->size * sizeof(float), cudaMemcpyDeviceToHost);
+
+    if(err != cudaSuccess){
+        std::cerr << "Tensor checked download failed: " << cudaGetErrorString(err) << std::endl;
+        out.clear();
+        return false;
+    }
+
+    return true;
+}
+
 Tensor::Tensor(){
     this->gpu_data = nullptr;
     this->size = 0;

@@ -2,22 +2,40 @@
 #include<iostream>
 #include<fstream>
 #include<cstdio>
+#include<cuda_runtime.h>
 
 
-void FileHandler::setParameter(const std::vector<Module*>& model, std::string FILENAME){
+bool FileHandler::setParameter(const std::vector<Module*>& model, std::string FILENAME){
+    cudaError_t syncErr = cudaDeviceSynchronize();
+
+    if(syncErr != cudaSuccess){
+        std::cerr << "Skipping checkpoint save because CUDA is unhealthy: "
+                  << cudaGetErrorString(syncErr) << std::endl;
+        return false;
+    }
+
     std::string tempFileName = FILENAME + ".tmp";
     std::ofstream outfile(tempFileName, std::ios::binary);
 
     if(!outfile.is_open()){
         std::cerr<<"Failed to open "<<tempFileName<<std::endl;
-        return;
+        return false;
     } 
     
 
     for(auto layer: model){
         auto parameter = layer->getParameter();
         for(auto i : parameter){
-            auto temp = i->data.downloadata();
+            std::vector<float> temp;
+
+            if(!i->data.downloadDataChecked(temp)){
+                std::cerr << "Aborting checkpoint save because tensor download failed: "
+                          << tempFileName << std::endl;
+                outfile.close();
+                std::remove(tempFileName.c_str());
+                return false;
+            }
+
             //i->data.getMatData().data() function returns a direct memory address (a pointer) to the first element inside the vector.
             outfile.write(reinterpret_cast<const char*>(temp.data()), i->data.getTensorSize() * sizeof(float));
 
@@ -25,7 +43,7 @@ void FileHandler::setParameter(const std::vector<Module*>& model, std::string FI
                 std::cerr << "Failed while writing checkpoint temp file: " << tempFileName << std::endl;
                 outfile.close();
                 std::remove(tempFileName.c_str());
-                return;
+                return false;
             }
         }
     }
@@ -35,13 +53,16 @@ void FileHandler::setParameter(const std::vector<Module*>& model, std::string FI
     if(!outfile.good()){
         std::cerr << "Failed to finish checkpoint temp file: " << tempFileName << std::endl;
         std::remove(tempFileName.c_str());
-        return;
+        return false;
     }
 
     if(std::rename(tempFileName.c_str(), FILENAME.c_str()) != 0){
         std::cerr << "Failed to replace checkpoint file: " << FILENAME << std::endl;
         std::remove(tempFileName.c_str());
+        return false;
     }
+
+    return true;
 }
 
 void FileHandler::fetchParameter(const std::vector<Module*>& model, std::string FILENAME){

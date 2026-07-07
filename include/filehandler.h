@@ -7,7 +7,7 @@
 
 class FileHandler{
     public:
-        void setParameter(const std::vector<Module*>& model, std::string FILENAME);
+        bool setParameter(const std::vector<Module*>& model, std::string FILENAME);
         void fetchParameter(const std::vector<Module*>& model, std::string FILENAME);
 };
 

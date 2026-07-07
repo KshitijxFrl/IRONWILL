@@ -41,6 +41,7 @@ class Tensor{
         
         void uploadData(std::vector<float>& data);
         std::vector<float> downloadata();
+        bool downloadDataChecked(std::vector<float>& out);
 
         void  setData(std::vector<int> id, float val);
         float getData(std::vector<int> id);

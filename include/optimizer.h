@@ -31,7 +31,7 @@ public:
 
     void adamW();
 
-    void saveState(std::string fileName);
+    bool saveState(std::string fileName);
 
     bool loadState(std::string fileName);
 
