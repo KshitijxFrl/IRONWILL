@@ -5,6 +5,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <cuda_runtime.h>
 
 bool inferenceFileExists(std::string fileName){
     std::ifstream file(fileName);
@@ -30,6 +31,14 @@ int argmaxLastPosition(Tensor& logits,int position,int vocabSize){
     }
 
     return bestToken;
+}
+
+void clearInferenceCaches(std::vector<Module*>& layers){
+    for(int i = 0; i < layers.size(); i++){
+        if(layers[i] != nullptr){
+            layers[i]->clearCache();
+        }
+    }
 }
 
 void fillPromptTensor(std::vector<int>& tokens,Tensor& xInput,int seqLen){
@@ -93,6 +102,22 @@ std::string runPromptInference(
 
         Tensor* logits = modelForward(embedding,layers,outputHead,xInput,activationsToClean);
 
+        cudaError_t forwardErr = cudaDeviceSynchronize();
+
+        if(forwardErr != cudaSuccess){
+            std::cerr << "Inference forward failed: " << cudaGetErrorString(forwardErr) << std::endl;
+
+            if(logits != nullptr){
+                logits->clear();
+                delete logits;
+                logits = nullptr;
+            }
+
+            cleanActivations(activationsToClean);
+            clearInferenceCaches(layers);
+            break;
+        }
+
         int position = generated.size() - 1;
 
         if(position >= seqLen){
@@ -106,6 +131,7 @@ std::string runPromptInference(
         logits = nullptr;
 
         cleanActivations(activationsToClean);
+        clearInferenceCaches(layers);
 
         generated.push_back(nextToken);
 

@@ -168,3 +168,37 @@ Tensor* AttentionGQA::backward(Tensor& gradOut){
 
     return gradInQ;
 }
+
+void AttentionGQA::clearCache(){
+    if(this->prevQ != nullptr){
+        this->prevQ->clear();
+        delete this->prevQ;
+        this->prevQ = nullptr;
+    }
+
+    if(this->prevK != nullptr){
+        this->prevK->clear();
+        delete this->prevK;
+        this->prevK = nullptr;
+    }
+
+    if(this->prevV != nullptr){
+        this->prevV->clear();
+        delete this->prevV;
+        this->prevV = nullptr;
+    }
+
+    if(this->prevAttentionOut != nullptr){
+        this->prevAttentionOut->clear();
+        delete this->prevAttentionOut;
+        this->prevAttentionOut = nullptr;
+    }
+
+    if(this->prevAttentionScores != nullptr){
+        this->prevAttentionScores->clear();
+        delete this->prevAttentionScores;
+        this->prevAttentionScores = nullptr;
+    }
+
+    this->prevData = nullptr;
+}

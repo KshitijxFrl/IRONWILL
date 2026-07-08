@@ -40,3 +40,11 @@ Tensor* ResidualAdd::backward(Tensor& gradOut){
 
     return actionGrad;
 }
+
+void ResidualAdd::clearCache(){
+    if(this->actionLayer != nullptr){
+        this->actionLayer->clearCache();
+    }
+
+    this->prevInput = nullptr;
+}

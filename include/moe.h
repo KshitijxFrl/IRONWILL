@@ -52,6 +52,8 @@ public:
     
     float getLastLoadBalanceLoss();
 
+    void clearCache() override;
+
 };
 
 #endif

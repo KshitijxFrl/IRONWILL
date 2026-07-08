@@ -197,3 +197,40 @@ Tensor* MoE::backward(Tensor& gradOut){
     return gradIn;
 }
 
+void MoE::clearCache(){
+    if(this->prevRouterLogits != nullptr){
+        this->prevRouterLogits->clear();
+        delete this->prevRouterLogits;
+        this->prevRouterLogits = nullptr;
+    }
+
+    if(this->prevRouterProb != nullptr){
+        this->prevRouterProb->clear();
+        delete this->prevRouterProb;
+        this->prevRouterProb = nullptr;
+    }
+
+    if(this->prevExpertChoice != nullptr){
+        this->prevExpertChoice->clear();
+        delete this->prevExpertChoice;
+        this->prevExpertChoice = nullptr;
+    }
+
+    for(int i = 0; i < this->prevExpertOutputs.size(); i++){
+        if(this->prevExpertOutputs[i] != nullptr){
+            this->prevExpertOutputs[i]->clear();
+            delete this->prevExpertOutputs[i];
+            this->prevExpertOutputs[i] = nullptr;
+        }
+    }
+
+    this->prevExpertOutputs.clear();
+
+    for(int i = 0; i < this->experts.size(); i++){
+        if(this->experts[i] != nullptr){
+            this->experts[i]->clearCache();
+        }
+    }
+
+    this->prevInput = nullptr;
+}

@@ -125,3 +125,25 @@ Tensor* SWIGLU::backward(Tensor& gradOut){
     return gradInGate;
     
 }
+
+void SWIGLU::clearCache(){
+    if(this->prev_prjGateIn != nullptr){
+        this->prev_prjGateIn->clear();
+        delete this->prev_prjGateIn;
+        this->prev_prjGateIn = nullptr;
+    }
+
+    if(this->prev_prjGateOut != nullptr){
+        this->prev_prjGateOut->clear();
+        delete this->prev_prjGateOut;
+        this->prev_prjGateOut = nullptr;
+    }
+
+    if(this->prev_prjUp != nullptr){
+        this->prev_prjUp->clear();
+        delete this->prev_prjUp;
+        this->prev_prjUp = nullptr;
+    }
+
+    this->prevInput = nullptr;
+}

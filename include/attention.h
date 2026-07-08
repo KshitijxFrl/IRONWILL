@@ -36,6 +36,7 @@ class AttentionGQA : public Module{
         Tensor* feedForward(Tensor& in_data) override;
         virtual std::vector<Parameter*> getParameter() override;
         Tensor* backward(Tensor& gradOut) override;
+        void clearCache() override;
 
 
 };

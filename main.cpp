@@ -106,7 +106,7 @@ int main(int argc, char** argv){
     int blockCount = 4;
     int expertCount = 4;
 
-    int totalSteps = 10000;//10000
+    int totalSteps = 15000;//10000
     float learningRate = 0.0003f;
 
     // -------------------------
