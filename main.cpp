@@ -63,9 +63,7 @@ int main(int argc, char** argv){
     cudaError_t cudaStatus = cudaGetDeviceCount(&cudaDeviceCount);
 
     if(cudaStatus != cudaSuccess || cudaDeviceCount == 0){
-        std::cerr << "No CUDA-capable device available: "
-                  << cudaGetErrorString(cudaStatus)
-                  << std::endl;
+        std::cerr << "No CUDA capable device available(no nvidia gpu): "<< cudaGetErrorString(cudaStatus)<< std::endl;
         return 1;
     }
 

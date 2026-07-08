@@ -325,6 +325,27 @@ std::vector<int> TokenUtility::encode(std::string text){
     return ids;
 }
 
+std::vector<int> TokenUtility::encodePrompt(std::string text){
+    std::vector<int> ids;
+
+    ids.push_back(this->bosID);
+
+    std::vector<std::string> tokens = tokenizeString(text);
+    std::vector<std::string> mergedTokens = applyManualMerges(tokens);
+
+    for(int i = 0; i < mergedTokens.size(); i++){
+        std::string token = mergedTokens[i];
+
+        if(this->vocabMAP.find(token) != this->vocabMAP.end()){
+            ids.push_back(this->vocabMAP[token]);
+        }else{
+            ids.push_back(this->unkID);
+        }
+    }
+
+    return ids;
+}
+
 std::string TokenUtility::decode(std::vector<int>& tokenIDs){
     std::string out = "";
 

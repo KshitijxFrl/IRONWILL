@@ -91,7 +91,7 @@ std::string runPromptInference(
         return "";
     }
 
-    std::vector<int> generated = tokenizer.encode(prompt);
+    std::vector<int> generated = tokenizer.encodePrompt(prompt);
 
     Tensor xInput({1, seqLen});
 

@@ -54,6 +54,7 @@ public:
     void loadVocab(std::string vocabFileName);
 
     std::vector<int> encode(std::string text);
+    std::vector<int> encodePrompt(std::string text);
 
     std::string decode(std::vector<int>& tokenIDs);
 

@@ -1,0 +1,58 @@
+Easy IRONWILL_V1 inference test prompts
+
+Run from:
+cd /mnt/wdstorage/project/IronWIll/Threminent_gpu
+
+CALC: basic derivative facts
+
+./ironwillV1_infer prompt $'[CALC]\nQuestion:\nDerivative of: sin x\n\nAnswer:'
+
+./ironwillV1_infer prompt $'[CALC]\nQuestion:\nDerivative of: cos x\n\nAnswer:'
+
+./ironwillV1_infer prompt $'[CALC]\nQuestion:\nDerivative of: 7\n\nAnswer:'
+
+./ironwillV1_infer prompt $'[CALC]\nQuestion:\nFind d/dx of x^2\n\nStep 1:\nUse the power rule: d/dx x^n = n x^(n-1).\n\nStep 2:\nHere n = 2, so the derivative is'
+
+./ironwillV1_infer prompt $'[CALC]\nQuestion:\nFind d/dx of x^3\n\nStep 1:\nUse the power rule: d/dx x^n = n x^(n-1).\n\nStep 2:\nHere n = 3, so the derivative is'
+
+
+TRIG: exact values
+
+./ironwillV1_infer prompt $'[TRIG]\nQuestion:\nEvaluate sin(90 degrees)\n\nStep 1:\nUse the standard exact-value table for 90 degrees.\n\nStep 2:\nsin(90 degrees) ='
+
+./ironwillV1_infer prompt $'[TRIG]\nQuestion:\nEvaluate sin(0 degrees)\n\nStep 1:\nUse the standard exact-value table for 0 degrees.\n\nStep 2:\nsin(0 degrees) ='
+
+./ironwillV1_infer prompt $'[TRIG]\nQuestion:\nEvaluate tan(45 degrees)\n\nStep 1:\nUse the standard exact-value table for 45 degrees.\n\nStep 2:\ntan(45 degrees) ='
+
+./ironwillV1_infer prompt $'[TRIG]\nQuestion:\nEvaluate cos(0 degrees)\n\nStep 1:\nUse the standard exact-value table for 0 degrees.\n\nStep 2:\ncos(0 degrees) ='
+
+
+ALG: simple linear equations
+
+./ironwillV1_infer prompt $'[ALG]\nQuestion:\nSolve: 2x = 8\n\nStep 1:\nDivide both sides by 2: x ='
+
+./ironwillV1_infer prompt $'[ALG]\nQuestion:\nSolve: x + 3 = 7\n\nStep 1:\nSubtract 3 from both sides: x ='
+
+./ironwillV1_infer prompt $'[ALG]\nQuestion:\nSolve: 3x + 3 = 12\n\nStep 1:\nSubtract 3 from both sides: 3x ='
+
+./ironwillV1_infer prompt $'[ALG]\nQuestion:\nSolve: x - 5 = 2\n\nStep 1:\nAdd 5 to both sides: x ='
+
+
+ARITH: tiny direct arithmetic
+
+./ironwillV1_infer prompt $'[ARITH]\nQuestion:\n2 + 3\n\nAnswer:'
+
+./ironwillV1_infer prompt $'[ARITH]\nQuestion:\n10 - 4\n\nAnswer:'
+
+./ironwillV1_infer prompt $'[ARITH]\nQuestion:\n3 * 4\n\nAnswer:'
+
+./ironwillV1_infer prompt $'[ARITH]\nQuestion:\n12 + 7\n\nStep 1:\nAdd the two numbers: 12 + 7 ='
+
+
+Best first demos
+
+./ironwillV1_infer prompt $'[CALC]\nQuestion:\nDerivative of: sin x\n\nAnswer:'
+
+./ironwillV1_infer prompt $'[ALG]\nQuestion:\nSolve: 2x = 8\n\nStep 1:\nDivide both sides by 2: x ='
+
+./ironwillV1_infer prompt $'[TRIG]\nQuestion:\nEvaluate tan(45 degrees)\n\nStep 1:\nUse the standard exact-value table for 45 degrees.\n\nStep 2:\ntan(45 degrees) ='
