@@ -155,13 +155,7 @@ __global__ void gqaBackwardK(
     float* gradK,            // [B, T, KVH, HD]
     float* gradV,            // [B, T, KVH, HD]
 
-    int b,
-    int sl,
-    int h,
-    int kvh,
-    int hd,
-    int N
-){
+    int b,int sl,int h,int kvh,int hd,int N){
     int headId = blockIdx.x * blockDim.x + threadIdx.x;
     int qStart = headId * hd;
 
@@ -202,14 +196,16 @@ __global__ void gqaBackwardK(
 
                 dot += go * vVal;
 
-                // gradV += attentionScore * gradOut
+                
+
+                //nice utility 
                 atomicAdd(&gradV[vStart + d], score * go);
             }
 
             dScore[s] = dot;
         }
 
-        //simple softmax for backward
+        
         float softmaxDot = 0.0f;
 
         for(int s = 0; s < sl; s++){
@@ -224,18 +220,15 @@ __global__ void gqaBackwardK(
             for(int s = 0; s < sl; s++){
                 float score = attentionScores[scoreStart + s];
 
-                // grad through softmax + scale
                 float dLogit = score * (dScore[s] - softmaxDot);
+             
                 dLogit *= scale;
 
                 int kStart = kvBatchOffset + (s * kvh * hd) + kvHeadOffset;
 
                 float kVal = K[kStart + d];
 
-                // gradQ += dLogit * K
                 gradQSum += dLogit * kVal;
-
-                // gradK += dLogit * Q
                 atomicAdd(&gradK[kStart + d], dLogit * qVal);
             }
 
@@ -250,9 +243,8 @@ void attention_GQA_Backward(Tensor& gradOut, Tensor& Q,Tensor& K,Tensor& V,Tenso
 
     int block_per_grid = (totalHeads + thread_per_block - 1) / thread_per_block;
 
-    if(seqlen > MAX_SEQ){
-        throw std::runtime_error("Sequence length exceeds MAX_SEQ");
-    }
+    if(seqlen > MAX_SEQ) throw std::runtime_error("Sequence length exceeds MAX_SEQ");
+    
 
     gradQ.fill(0.0f);
     gradK.fill(0.0f);

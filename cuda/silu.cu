@@ -52,6 +52,8 @@ void silu(Tensor& Gatein, Tensor& Up, Tensor& Gateout){
 
 }
 
+
+
 void onlySilu(Tensor& Gatein, Tensor& Gateout){
     int thread_per_block = 256;
     int block_per_grid = (Gatein.getTensorSize() + thread_per_block - 1) / thread_per_block;

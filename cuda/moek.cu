@@ -26,7 +26,10 @@ __global__ void routerSoftmaxTop1K(float* routerLogits,float* routerProb,float* 
             expSum += expVal;
         }
 
-        int bestExpert = 0;
+        int bestExpert = 0; //dont accidentley start with any other dont change this or dont do wired pass
+                            //U there lookin at this comment the above cooment is due to the moe desined for this iterration loopk at the top of moe cpp to get a breif idea what i am talking
+
+
         float bestProb = -1.0f;
 
         for(int e = 0; e < numExperts; e++){

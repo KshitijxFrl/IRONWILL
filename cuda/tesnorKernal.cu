@@ -1,6 +1,8 @@
 #include<cuda_runtime.h>
 #include"../include/tesnorKernal.h"
 
+//simple utility tensors
+
 __global__ void addTensorK(float* __restrict__ mA, const float* __restrict__ mB, int N){
     int id = blockIdx.x * blockDim.x + threadIdx.x;
 

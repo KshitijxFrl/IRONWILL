@@ -13,6 +13,7 @@
 // xInput  = input going inside the model
 // xTarget = values which we need to compare with the model output to compute loss 
 
+// Note for later:- this file is little too crowded next intration of thrmenint will adress this
 
 std::vector<int> loadTokenBin(std::string fileName){
     std::ifstream file(fileName, std::ios::binary);
@@ -42,6 +43,9 @@ std::vector<int> loadTokenBin(std::string fileName){
     return tokens;
 }
 
+
+//simple forward batching using this and removing this from embedding loop
+//this was better can gave clear results
 void createBatch(std::vector<int>& tokens,Tensor& xInput,Tensor& xTarget,int batchLen,int seqLen,int batchIndex){
     
     std::vector<float> inputData(batchLen * seqLen);
@@ -102,6 +106,7 @@ std::vector<Parameter*> collectAllParameters(Embedding& embedding,std::vector<Mo
 
 
 
+//||THE MAIN FORWARD||
 Tensor* modelForward(Embedding& embedding,std::vector<Module*>& layers,Linear& outputHead,Tensor& xInput,std::vector<Tensor*>& activationsToClean){
     
     Tensor* x = embedding.feedForward(xInput);
@@ -122,6 +127,7 @@ Tensor* modelForward(Embedding& embedding,std::vector<Module*>& layers,Linear& o
 }
 
 
+//||THE MAIN BACKWARD||
 Tensor* modelBackward(Embedding& embedding,std::vector<Module*>& layers,Linear& outputHead,Tensor& gradLogits){
     
     Tensor* grad = outputHead.backward(gradLogits);
@@ -143,7 +149,10 @@ Tensor* modelBackward(Embedding& embedding,std::vector<Module*>& layers,Linear& 
     return embeddingGrad;
 }
 
+//||SUPPORT FUCNTION||
 void cleanActivations(std::vector<Tensor*>& activationsToClean){
+    
+    
     for(int i = 0; i < activationsToClean.size(); i++){
         if(activationsToClean[i] != nullptr){
             activationsToClean[i]->clear();
@@ -155,12 +164,18 @@ void cleanActivations(std::vector<Tensor*>& activationsToClean){
     activationsToClean.clear();
 }
 
+
+//||HELPER||
 bool pathExists(std::string path){
+    
     struct stat info;
+    
     return stat(path.c_str(), &info) == 0;
 }
 
+//||HELPER||
 long long pathFileSize(std::string path){
+    
     struct stat info;
 
     if(stat(path.c_str(), &info) != 0){
@@ -170,6 +185,7 @@ long long pathFileSize(std::string path){
     return (long long)info.st_size;
 }
 
+//||HELPER||
 void createDirectory(std::string path){
     if(pathExists(path)){
         return;
@@ -180,6 +196,8 @@ void createDirectory(std::string path){
     }
 }
 
+//||HELPER||
+//In next itreation move these file feature to its own building block or integrate it to plain file handeler
 std::pair<int,std::string> findLatestNumberedCheckpoint(std::string checkpointDir){
     int latestStep = -1;
     std::string latestPath = "";
@@ -205,11 +223,14 @@ std::pair<int,std::string> findLatestNumberedCheckpoint(std::string checkpointDi
         if(stat(fullPath.c_str(), &info) != 0) continue;
         if(!S_ISREG(info.st_mode)) continue;
 
+        //DONT CHANGE THESE (simply better strcture and clear control)
         std::string prefix = "checkpoint_step_";
         std::string suffix = ".bin";
 
         if(fileName.size() <= prefix.size() + suffix.size()) continue;
         if(fileName.substr(0, prefix.size()) != prefix) continue;
+       
+       
         if(fileName.substr(fileName.size() - suffix.size()) != suffix) continue;
 
         std::string stepText = fileName.substr(
@@ -219,6 +240,8 @@ std::pair<int,std::string> findLatestNumberedCheckpoint(std::string checkpointDi
 
         int step = -1;
 
+
+        //added this for now didnt want to rely on this cather in next itreation
         try{
             step = std::stoi(stepText);
         }
@@ -232,10 +255,12 @@ std::pair<int,std::string> findLatestNumberedCheckpoint(std::string checkpointDi
         }
     }
 
-    closedir(dir);
 
+    closedir(dir);
     return {latestStep, latestPath};
 }
+
+//||HELPER||
 
 std::string optimizerCheckpointPath(std::string modelCheckpointPath){
     std::string suffix = ".bin";
@@ -251,6 +276,7 @@ std::string optimizerCheckpointPath(std::string modelCheckpointPath){
     return modelCheckpointPath + ".optim";
 }
 
+//||HELPER||
 void cleanupOldNumberedCheckpoints(std::string checkpointDir,int keepCount){
     if(keepCount <= 0) return;
     if(!pathExists(checkpointDir)) return;
@@ -312,6 +338,8 @@ void cleanupOldNumberedCheckpoints(std::string checkpointDir,int keepCount){
         std::string optimFile = optimizerCheckpointPath(modelFile);
 
         std::cout << "Deleting old checkpoint: " << modelFile << std::endl;
+        
+        //add the nessary remove 
         std::remove(modelFile.c_str());
         std::remove(optimFile.c_str());
 
@@ -319,6 +347,7 @@ void cleanupOldNumberedCheckpoints(std::string checkpointDir,int keepCount){
     }
 }
 
+//||HELPER||
 void saveBestMetric(std::string bestMetricFile,float bestLoss){
     std::string tempFileName = bestMetricFile + ".tmp";
     std::ofstream bestFile(tempFileName);
@@ -343,6 +372,7 @@ void saveBestMetric(std::string bestMetricFile,float bestLoss){
     }
 }
 
+//||HELPER||
 bool saveCheckpointWithOptimizer(
     FileHandler& fileHandler,
     Optimizer& optimizer,
@@ -367,12 +397,12 @@ bool saveCheckpointWithOptimizer(
     return true;
 }
 
+//||HELPER||
 void appendProgress(std::string progressFile,int step,float trainLoss,float valLoss){
     bool needsHeader = true;
 
-    if(pathExists(progressFile) && pathFileSize(progressFile) > 0){
-        needsHeader = false;
-    }
+    if(pathExists(progressFile) && pathFileSize(progressFile) > 0) needsHeader = false;
+    
 
     std::ofstream progress(progressFile, std::ios::app);
 
@@ -389,6 +419,7 @@ void appendProgress(std::string progressFile,int step,float trainLoss,float valL
     progress.close();
 }
 
+//||HELPER||
 void createProgressFile(std::string progressFile){
     if(pathExists(progressFile) && pathFileSize(progressFile) > 0){
         return;
@@ -402,19 +433,12 @@ void createProgressFile(std::string progressFile){
     }
 
     progress << "step,train_loss,val_loss\n";
+    
     progress.close();
 }
 
-float evaluateLoss(
-    std::vector<int>& evalTokens,
-    Embedding& embedding,
-    std::vector<Module*>& layers,
-    Linear& outputHead,
-    int batchLen,
-    int seqLen,
-    int vocabSize,
-    int evalBatches
-){
+float evaluateLoss(std::vector<int>& evalTokens,Embedding& embedding,std::vector<Module*>& layers,Linear& outputHead,int batchLen,int seqLen,int vocabSize,int evalBatches){
+    
     int recordLen = seqLen + 1;
     int evalSampleCount = evalTokens.size() / recordLen;
     int availableBatches = evalSampleCount / batchLen;
@@ -424,13 +448,11 @@ float evaluateLoss(
         return -1.0f;
     }
 
-    if(evalBatches <= 0){
-        return -1.0f;
-    }
+    if(evalBatches <= 0) return -1.0f;
+    
 
-    if(evalBatches > availableBatches){
-        evalBatches = availableBatches;
-    }
+    if(evalBatches > availableBatches) evalBatches = availableBatches;
+    
 
     Tensor xInput({batchLen, seqLen});
     Tensor xTarget({batchLen, seqLen});
@@ -463,23 +485,9 @@ float evaluateLoss(
     return totalLoss / evalBatches;
 }
 
-void trainLoop(
-    std::string trainBinFile,
-    std::string valBinFile,
-    std::string testBinFile,
-    Embedding& embedding,
-    std::vector<Module*>& layers,
-    Linear& outputHead,
-    int batchLen,
-    int seqLen,
-    int vocabSize,
-    int totalSteps,
-    float learningRate,
-    int saveEvery,
-    int logEvery,
-    int valEvery,
-    int evalBatches
-){
+void trainLoop(std::string trainBinFile,std::string valBinFile,std::string testBinFile,Embedding& embedding,std::vector<Module*>& layers,Linear& outputHead,int batchLen,int seqLen,int vocabSize,int totalSteps,float learningRate,int saveEvery,int logEvery,int valEvery,int evalBatches){
+    
+    
     std::string checkpointDir = "model_checkpoints";
     std::string progressDir = "progress";
 
@@ -487,9 +495,9 @@ void trainLoop(
     createDirectory(progressDir);
 
     std::string latestCheckpointFile = checkpointDir + "/checkpoint_latest.bin";
-    std::string bestCheckpointFile = checkpointDir + "/checkpoint_best.bin";
-    std::string bestMetricFile = checkpointDir + "/checkpoint_best_metric.txt";
-    std::string progressFile = progressDir + "/training_progress.csv";
+    std::string bestCheckpointFile   = checkpointDir + "/checkpoint_best.bin";
+    std::string bestMetricFile       = checkpointDir + "/checkpoint_best_metric.txt";
+    std::string progressFile         = progressDir + "/training_progress.csv";
 
     createProgressFile(progressFile);
     
@@ -509,9 +517,9 @@ void trainLoop(
     bool hasValidation = false;
 
     if(valBinFile == ""){
-        std::cerr << "Warning: validation token file not provided." << std::endl;
+        std::cerr << "||Warning||: validation token file not provided." << std::endl;
     }else if(!pathExists(valBinFile)){
-        std::cerr << "Warning: validation token file missing: " << valBinFile << std::endl;
+        std::cerr << "||Warning||: validation token file missing: " << valBinFile << std::endl;
     }else{
         valTokens = loadTokenBin(valBinFile);
         int valRecordLen = seqLen + 1;
@@ -520,21 +528,21 @@ void trainLoop(
         if(valSampleCount / batchLen > 0){
             hasValidation = true;
         }else{
-            std::cerr << "Warning: validation token file too small." << std::endl;
+            std::cerr << "||Warning||: validation token file too small." << std::endl;
         }
     }
 
     if(testBinFile == ""){
-        std::cerr << "Warning: test token file not provided." << std::endl;
+        std::cerr << "||Warning||: test token file not provided." << std::endl;
     }else if(!pathExists(testBinFile)){
-        std::cerr << "Warning: test token file missing: " << testBinFile << std::endl;
+        std::cerr << "||Warning||: test token file missing: " << testBinFile << std::endl;
     }else{
         std::vector<int> testTokens = loadTokenBin(testBinFile);
         int testRecordLen = seqLen + 1;
         int testSampleCount = testTokens.size() / testRecordLen;
 
         if(testSampleCount / batchLen <= 0){
-            std::cerr << "Warning: test token file too small." << std::endl;
+            std::cerr << "||Warning||: test token file too small." << std::endl;
         }
     }
 
@@ -599,8 +607,10 @@ void trainLoop(
     Tensor xInput({batchLen, seqLen});
     Tensor xTarget({batchLen, seqLen});
     Tensor gradLogits({batchLen, seqLen, vocabSize});
+    
+    
     float lastLoss = -1.0f;
-    int lastStep = startStep - 1;
+    int   lastStep = startStep - 1;
     float bestLoss = -1.0f;
 
     if(pathExists(bestMetricFile)){
@@ -656,16 +666,7 @@ void trainLoop(
             float valLoss = -1.0f;
 
             if(hasValidation && valEvery > 0 && step % valEvery == 0){
-                valLoss = evaluateLoss(
-                    valTokens,
-                    embedding,
-                    layers,
-                    outputHead,
-                    batchLen,
-                    seqLen,
-                    vocabSize,
-                    evalBatches
-                );
+                valLoss = evaluateLoss(valTokens,embedding,layers,outputHead,batchLen,seqLen,vocabSize,evalBatches);
             }
 
             appendProgress(progressFile,step,loss,valLoss);
@@ -677,9 +678,7 @@ void trainLoop(
             }
 
             if(bestLoss < 0.0f || compareLoss < bestLoss){
-                std::cout << "Saving best checkpoint: " << bestCheckpointFile
-                          << " Best Loss: " << compareLoss
-                          << std::endl;
+                std::cout << "Saving best checkpoint: " << bestCheckpointFile<< " Best Loss: " << compareLoss<< std::endl;
 
                 if(saveCheckpointWithOptimizer(fileHandler,optimizer,fullModel,bestCheckpointFile)){
                     bestLoss = compareLoss;
@@ -689,10 +688,7 @@ void trainLoop(
                 }
             }
 
-            std::cout << "Step: " << step
-                      << " Train Loss: " << loss
-                      << " Val Loss: " << valLoss
-                      << std::endl;
+            std::cout << "Step: " << step<< " Train Loss: " << loss<< " Val Loss: " << valLoss<< std::endl;
         }
 
 
@@ -713,30 +709,18 @@ void trainLoop(
         float finalValLoss = -1.0f;
 
         if(hasValidation){
-            finalValLoss = evaluateLoss(
-                valTokens,
-                embedding,
-                layers,
-                outputHead,
-                batchLen,
-                seqLen,
-                vocabSize,
-                evalBatches
-            );
+            finalValLoss = evaluateLoss(valTokens,embedding,layers,outputHead,batchLen,seqLen,vocabSize,evalBatches);
         }
 
         appendProgress(progressFile,lastStep,lastLoss,finalValLoss);
 
         float compareLoss = lastLoss;
 
-        if(finalValLoss >= 0.0f){
-            compareLoss = finalValLoss;
-        }
+        if(finalValLoss >= 0.0f) compareLoss = finalValLoss;
+        
 
         if(bestLoss < 0.0f || compareLoss < bestLoss){
-            std::cout << "Saving best checkpoint: " << bestCheckpointFile
-                      << " Best Loss: " << compareLoss
-                      << std::endl;
+            std::cout << "Saving best checkpoint: " << bestCheckpointFile<< " Best Loss: " << compareLoss<< std::endl;
 
             if(saveCheckpointWithOptimizer(fileHandler,optimizer,fullModel,bestCheckpointFile)){
                 bestLoss = compareLoss;
@@ -748,8 +732,12 @@ void trainLoop(
     }
 
     std::cout << "Saving final checkpoint: " << latestCheckpointFile << std::endl;
+    
+    
     saveCheckpointWithOptimizer(fileHandler,optimizer,fullModel,latestCheckpointFile);
 
+
+    //flush
     xInput.clear();
     xTarget.clear();
     gradLogits.clear();

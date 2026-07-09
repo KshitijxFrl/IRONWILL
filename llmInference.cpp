@@ -7,6 +7,10 @@
 #include <iostream>
 #include <cuda_runtime.h>
 
+//--------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+
+//||HELPER||
 bool inferenceFileExists(std::string fileName){
     std::ifstream file(fileName);
     bool exists = file.is_open();
@@ -14,6 +18,7 @@ bool inferenceFileExists(std::string fileName){
     return exists;
 }
 
+//||HELPER||
 int argmaxLastPosition(Tensor& logits,int position,int vocabSize){
     std::vector<float> cpuLogits = logits.downloadata();
 
@@ -33,6 +38,7 @@ int argmaxLastPosition(Tensor& logits,int position,int vocabSize){
     return bestToken;
 }
 
+//||HELPER||
 void clearInferenceCaches(std::vector<Module*>& layers){
     for(int i = 0; i < layers.size(); i++){
         if(layers[i] != nullptr){
@@ -41,6 +47,7 @@ void clearInferenceCaches(std::vector<Module*>& layers){
     }
 }
 
+//||HELPER||
 void fillPromptTensor(std::vector<int>& tokens,Tensor& xInput,int seqLen){
     std::vector<float> inputData(seqLen, 0.0f);
 
@@ -59,17 +66,9 @@ void fillPromptTensor(std::vector<int>& tokens,Tensor& xInput,int seqLen){
     xInput.uploadData(inputData);
 }
 
-std::string runPromptInference(
-    std::string prompt,
-    TokenUtility& tokenizer,
-    Embedding& embedding,
-    std::vector<Module*>& layers,
-    Linear& outputHead,
-    int seqLen,
-    int vocabSize,
-    int maxNewTokens,
-    std::string checkpointFile
-){
+std::string runPromptInference(std::string prompt,TokenUtility& tokenizer,Embedding& embedding,std::vector<Module*>& layers,Linear& outputHead,int seqLen,int vocabSize,int maxNewTokens,std::string checkpointFile){
+    
+    
     std::vector<Module*> fullModel;
 
     fullModel.push_back(&embedding);
@@ -140,7 +139,10 @@ std::string runPromptInference(
         }
     }
 
+    //alway clear or FLUSH
     xInput.clear();
+
+
 
     return tokenizer.decode(generated);
 }

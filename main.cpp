@@ -4,6 +4,7 @@
 #include <ctime>
 #include <fstream>
 #include <sys/stat.h>
+
 #include <cuda_runtime.h>
 
 #include "include/llmAssembly.h"
@@ -18,6 +19,14 @@
 #include "include/attention.h"
 #include "include/residualADD.h"
 #include "include/moe.h"
+
+//------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------
+
+//Will create a oraganizer in the next iteration which will systemize these extra nessary handelers into a proper re-usable utility
+
+
+//||ORGANISERS EXTRA FUNCTION||
 
 bool localFileExists(std::string fileName){
     std::ifstream file(fileName);
@@ -37,23 +46,20 @@ bool localDirectoryExists(std::string dirName){
 }
 
 void createLocalDirectory(std::string dirName){
-    if(localDirectoryExists(dirName)){
-        return;
-    }
+    
+    
+    if(localDirectoryExists(dirName)) return;
+    
 
-    if(mkdir(dirName.c_str(), 0755) != 0){
-        std::cerr << "Failed to create directory: " << dirName << std::endl;
-    }
+    if(mkdir(dirName.c_str(), 0755) != 0) std::cerr << "Failed to create directory: " << dirName << std::endl;
+    
 }
 
 std::string joinPath(std::string folder,std::string fileName){
-    if(folder == "" || folder == "."){
-        return fileName;
-    }
+    if(folder == "" || folder == ".") return fileName;
+    
 
-    if(folder.back() == '/'){
-        return folder + fileName;
-    }
+    if(folder.back() == '/') return folder + fileName;
 
     return folder + "/" + fileName;
 }
@@ -70,6 +76,8 @@ int main(int argc, char** argv){
     srand(time(NULL));
 
     // Edit these folders when moving datasets, generated token bins, or vocab files.
+    // Recommended this step up make sure thse folders exists or change the name and location with desired folder
+    
     std::string datasetLocation = "dataset";
     std::string binLocation     = "binFiles";
     std::string vocabLocation   = "vocab";
@@ -89,23 +97,23 @@ int main(int argc, char** argv){
     createLocalDirectory(vocabLocation);
 
     // -------------------------
-    // IRONWILL_V1 config
+    // IRONWILL_V1 HYPER PARAMETERS AND PARAMETERS config
     // -------------------------
     int batchLen = 1;
-    int seqLen = 512;
+    int seqLen   = 512;
 
-    int dModel = 512;
+    int dModel   = 512;
 
-    int head = 8;
-    int kvHead = 4;
-    int headDim = 64;        // head * headDim = dModel
+    int head     = 8;
+    int kvHead   = 4;
+    int headDim  = 64;        
 
-    int hiddenDim = 4096;
-    int blockCount = 4;
+    int hiddenDim   = 4096;
+    int blockCount  = 4;
     int expertCount = 4;
 
-    int totalSteps = 15000;//10000
-    float learningRate = 0.0003f;
+    int totalSteps     = 10000; //15000 -> 20000 -> 30000 -> 40000 -> 50000 -> 100000
+    float learningRate = 0.0003f; //started with 0.01f which was so bad
 
     // -------------------------
     // Tokenizer preparation
@@ -124,52 +132,52 @@ int main(int argc, char** argv){
     }else{
         if(localFileExists(vocabFile)){
             std::cout << "Using existing vocab file: " << vocabFile << std::endl;
+        
         }else{
+
             std::cout << "Creating vocab file: " << vocabFile << std::endl;
-            tokenizer.createVocabFromJsonl(
-                rawTrainFile,
-                vocabFile
-            );
+            tokenizer.createVocabFromJsonl(rawTrainFile,vocabFile);
         }
 
         tokenizer.loadVocab(vocabFile);
 
         if(localFileExists(trainBinFile)){
+            
             std::cout << "Using existing train token bin: " << trainBinFile << std::endl;
+        
         }else{
+            
             std::cout << "Creating train token bin: " << trainBinFile << std::endl;
-            tokenizer.encodeJsonlToPaddedBin(
-                rawTrainFile,
-                trainBinFile,
-                seqLen
-            );
+            
+            tokenizer.encodeJsonlToPaddedBin(rawTrainFile,trainBinFile,seqLen);
         }
+
+
 
         if(rawValFile != "" && localFileExists(rawValFile)){
             if(localFileExists(valBinFile)){
+                
                 std::cout << "Using existing validation token bin: " << valBinFile << std::endl;
+            
             }else{
+                
                 std::cout << "Creating validation token bin: " << valBinFile << std::endl;
-                tokenizer.encodeJsonlToPaddedBin(
-                    rawValFile,
-                    valBinFile,
-                    seqLen
-                );
+                tokenizer.encodeJsonlToPaddedBin(rawValFile,valBinFile,seqLen);
             }
         }else{
             valBinFile = "";
         }
 
         if(rawTestFile != "" && localFileExists(rawTestFile)){
+
             if(localFileExists(testBinFile)){
+                
                 std::cout << "Using existing test token bin: " << testBinFile << std::endl;
+            
             }else{
+                
                 std::cout << "Creating test token bin: " << testBinFile << std::endl;
-                tokenizer.encodeJsonlToPaddedBin(
-                    rawTestFile,
-                    testBinFile,
-                    seqLen
-                );
+                tokenizer.encodeJsonlToPaddedBin(rawTestFile,testBinFile,seqLen);
             }
         }else{
             testBinFile = "";
@@ -205,9 +213,13 @@ int main(int argc, char** argv){
 
 
     // -------------------------
-    // IRONWILL_V1 blocks:
+    // IRONWILL_V1 blocks:  THE MAIN ARCHITECTURE
+    //
     // RMSNorm -> Residual Attention -> RMSNorm -> Residual MoE
     // -------------------------
+    
+    
+    //EASY LOOP but remeber the model deman this so i have not numbered the layers but i will recommend numbering layers.
     for(int block = 0; block < blockCount; block++){
         RMSNormal* normAttn   = new RMSNormal(dModel);
 
@@ -236,37 +248,22 @@ int main(int argc, char** argv){
     // Output head: [B, T, dModel] -> [B, T, vocabSize]
     Linear outputHead(batchLen, dModel, vocabSize);
 
-    long long embeddingParams = (long long)vocabSize * dModel;
-    long long outputHeadParams = (long long)dModel * vocabSize + vocabSize;
-    long long attnParamsPerBlock =
-        (long long)dModel * dModel +
-        (long long)dModel * (kvHead * headDim) +
-        (long long)dModel * (kvHead * headDim) +
-        (long long)dModel * dModel;
-    long long moeParamsPerExpert =
-        (long long)dModel * hiddenDim +
-        (long long)dModel * hiddenDim +
-        (long long)hiddenDim * dModel;
-    long long moeParamsPerBlock =
-        (long long)dModel * expertCount + expertCount +
-        (long long)expertCount * moeParamsPerExpert;
-    long long normParams =
-        (long long)(blockCount * 2 + 1) * dModel;
-    long long estimatedParams =
-        embeddingParams +
-        outputHeadParams +
-        (long long)blockCount * (attnParamsPerBlock + moeParamsPerBlock) +
-        normParams;
+    long long embeddingParams    = (long long)vocabSize * dModel;
+    
+    long long outputHeadParams   = (long long)dModel * vocabSize + vocabSize;
+    
+    long long attnParamsPerBlock = (long long)dModel * dModel + (long long)dModel * (kvHead * headDim) + (long long)dModel * (kvHead * headDim) + (long long)dModel * dModel;
+    
+    long long moeParamsPerExpert = (long long)dModel * hiddenDim +(long long)dModel * hiddenDim +(long long)hiddenDim * dModel;
+    
+    long long moeParamsPerBlock  = (long long)dModel * expertCount + expertCount +(long long)expertCount * moeParamsPerExpert;
+    
+    long long normParams = (long long)(blockCount * 2 + 1) * dModel;
+    
+    long long estimatedParams = embeddingParams + outputHeadParams + (long long)blockCount * (attnParamsPerBlock + moeParamsPerBlock) + normParams;
 
-    std::cout << "IRONWILL_V1 config: "
-              << "blocks=" << blockCount
-              << ", experts=" << expertCount
-              << ", dModel=" << dModel
-              << ", hiddenDim=" << hiddenDim
-              << ", seqLen=" << seqLen
-              << ", heads=" << head
-              << ", kvHeads=" << kvHead
-              << std::endl;
+    std::cout << "IRONWILL_V1 config: "<< "blocks=" << blockCount<< ", experts=" << expertCount<< ", dModel=" << dModel<< ", hiddenDim=" << hiddenDim<< ", seqLen=" << seqLen<< ", heads=" << head<< ", kvHeads=" << kvHead<< std::endl;
+
     std::cout << "Estimated parameters: " << estimatedParams << std::endl;
 
     if(promptMode){
@@ -310,6 +307,9 @@ int main(int argc, char** argv){
             ownedActionLayers[i] = nullptr;
         }
     }
+
+
+    //final clear
 
     ownedActionLayers.clear();
 
