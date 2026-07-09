@@ -5,6 +5,14 @@
 #include <iostream>
 
 
+// 3 experts
+// Top-1 routing
+// No expert parallelism
+// No distributed routing
+// Simple load balancing loss
+
+
+
 
 MoE::MoE(int bl,int sl,int dm,int hidden,int expertsCount){
     this->batchLen = bl;
