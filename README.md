@@ -10,6 +10,13 @@
   <a href="https://kshitijxfrl.github.io/irwWEB/">Project Website</a>
 </p>
 
+<p align="center">
+  <img alt="C++17" src="https://img.shields.io/badge/C++-17-lightgrey">
+  <img alt="CUDA" src="https://img.shields.io/badge/CUDA-GPU-lightgrey">
+  <img alt="Params" src="https://img.shields.io/badge/params-177M-lightgrey">
+  <img alt="Context" src="https://img.shields.io/badge/context-512-lightgrey">
+</p>
+
 IRONWILL is an attempt to build a mathematically capable language model from the ground up. The long-term vision is a model that can help with deep mathematical reasoning, research, and eventually expand toward scientific work that helps unlock harder questions about the universe.
 
 This repository contains **IRONWILL_V1**, the first proof-of-concept model and training system.
@@ -30,26 +37,36 @@ Architecture:
 
 ```mermaid
 flowchart LR
-    A[Token Embedding] --> B1
-    B7 --> C[Final RMSNorm]
-    C --> D[Output Head]
+    TOK[Token IDs<br/>B x T] --> EMB[Token Embedding<br/>vocab x d_model]
+    EMB --> X0[Hidden State<br/>B x T x 512]
+    X0 --> N1
+    R2 --> FN[Final RMSNorm]
+    FN --> HEAD[Output Head<br/>512 x vocab]
+    HEAD --> LOGITS[Logits<br/>B x T x vocab]
 
-    subgraph TBLOCK[Transformer Block x4]
-        B1[RMSNorm] --> B2[RoPE]
-        B2 --> B3[GQA Attention]
-        B3 --> B4[Residual Add]
-        B4 --> B5[RMSNorm]
-        B5 --> B6[MoE FFN]
-        B6 --> B7[Residual Add]
+    subgraph BLOCK[Transformer Block x4]
+        N1[RMSNorm] --> ROPE[RoPE]
+        ROPE --> GQA[GQA Attention<br/>8 heads / 4 kv heads]
+        GQA --> R1[Residual Add]
+        R1 --> N2[RMSNorm]
+        N2 --> ROUTER[MoE Router]
+        ROUTER --> E1[Expert 1<br/>SwiGLU]
+        ROUTER --> E2[Expert 2<br/>SwiGLU]
+        ROUTER --> E3[Expert 3<br/>SwiGLU]
+        ROUTER --> E4[Expert 4<br/>SwiGLU]
+        E1 --> MIX[Expert Mix]
+        E2 --> MIX
+        E3 --> MIX
+        E4 --> MIX
+        MIX --> R2[Residual Add]
     end
 
-    subgraph MOE[MoE FFN]
-        M1[Router] --> M2[Expert 1: SwiGLU]
-        M1 --> M3[Expert 2: SwiGLU]
-        M1 --> M4[Expert 3: SwiGLU]
-        M1 --> M5[Expert 4: SwiGLU]
-    end
+    LOGITS --> LOSS[Cross Entropy<br/>CUDA]
+    LOSS --> ADAM[AdamW<br/>CUDA]
+    ADAM -.updates.-> EMB
 ```
+
+V1 is intentionally small enough to train on a single consumer GPU, but the path is real: tokenization, CUDA kernels, checkpointing, resume, validation, and prompt inference.
 
 Dataset:
 
