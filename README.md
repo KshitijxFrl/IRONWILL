@@ -3,7 +3,7 @@
 </h1>
 
 <p align="center">
-  <strong>A from-scratch mathematical language model experiment.</strong>
+  <strong>A mathematical language model built to reason through hard problems.</strong>
 </p>
 
 <p align="center">
@@ -28,24 +28,27 @@ Current model:
 
 Architecture:
 
-```text
-Token Embedding
+```mermaid
+flowchart LR
+    A[Token Embedding] --> B1
+    B7 --> C[Final RMSNorm]
+    C --> D[Output Head]
 
-Transformer Block x4
-  RMSNorm
-  GQA Attention + RoPE
-  Residual Add
-  RMSNorm
-  MoE FFN
-    Router
-    Expert 1: SwiGLU FFN
-    Expert 2: SwiGLU FFN
-    Expert 3: SwiGLU FFN
-    Expert 4: SwiGLU FFN
-  Residual Add
+    subgraph TBLOCK[Transformer Block x4]
+        B1[RMSNorm] --> B2[RoPE]
+        B2 --> B3[GQA Attention]
+        B3 --> B4[Residual Add]
+        B4 --> B5[RMSNorm]
+        B5 --> B6[MoE FFN]
+        B6 --> B7[Residual Add]
+    end
 
-Final RMSNorm
-Output Head
+    subgraph MOE[MoE FFN]
+        M1[Router] --> M2[Expert 1: SwiGLU]
+        M1 --> M3[Expert 2: SwiGLU]
+        M1 --> M4[Expert 3: SwiGLU]
+        M1 --> M5[Expert 4: SwiGLU]
+    end
 ```
 
 Dataset:
